@@ -31,7 +31,8 @@ export default function Register() {
   useEffect(() => {
     let timer;
     const initializeMsg91 = () => {
-      if (window.initSendOTP && !window.sendOtp) {
+      if (window.initSendOTP && !window.sendOtp && !window.msg91Initialized) {
+        window.msg91Initialized = true;
         window.initSendOTP({
           widgetId: "3664776d7149353331343032",
           tokenAuth: import.meta.env.VITE_MSG91_TOKEN || "{token}",
@@ -41,7 +42,7 @@ export default function Register() {
           failure: (error) => console.error('MSG91 Init Failure', error)
         });
         clearInterval(timer);
-      } else if (window.sendOtp) {
+      } else if (window.sendOtp || window.msg91Initialized) {
         clearInterval(timer);
       }
     };
