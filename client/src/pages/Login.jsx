@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Phone } from 'lucide-react';
+import { Phone, Lock } from 'lucide-react';
 import { auth, googleProvider } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
 import { FcGoogle } from 'react-icons/fc';
@@ -9,8 +9,22 @@ import { FcGoogle } from 'react-icons/fc';
 export default function Login() {
   const navigate = useNavigate();
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Initialize MSG91 for custom methods if script is loaded
+    if (window.initSendOTP) {
+      window.initSendOTP({
+        widgetId: "3664776d7149353331343032",
+        tokenAuth: import.meta.env.VITE_MSG91_TOKEN || "{token}",
+        exposeMethods: true,
+        captchaRenderId: 'recaptcha-container'
+      });
+    }
+  }, []);
 
   const handleMsg91Success = async (msg91Token) => {
     setLoading(true);
@@ -35,13 +49,35 @@ export default function Login() {
     
     const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber.replace('+', '') : `91${phoneNumber}`;
 
-    if (window.initSendOTP) {
-      window.initSendOTP({
-        widgetId: "3664776d7149353331343032",
-        tokenAuth: import.meta.env.VITE_MSG91_TOKEN,
-        identifier: formattedPhone,
-        success: (data) => {
-          // data.message contains the JWT token
+    if (window.sendOtp) {
+      window.sendOtp(
+        formattedPhone,
+        () => {
+          setOtpSent(true);
+          setLoading(false);
+        },
+        (error) => {
+          setLoading(false);
+          console.error(error);
+          setError('Failed to send OTP. Check your token or number.');
+        }
+      );
+    } else {
+      setLoading(false);
+      setError('MSG91 script failed to load. Please refresh.');
+    }
+  };
+
+  const handleVerifyOtp = (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    if (window.verifyOtp) {
+      window.verifyOtp(
+        otp,
+        (data) => {
+          // data.message contains the verified token
           if (data && data.message) {
             handleMsg91Success(data.message);
           } else {
@@ -49,15 +85,11 @@ export default function Login() {
             setError('Invalid response from MSG91');
           }
         },
-        failure: (error) => {
+        (error) => {
           setLoading(false);
-          console.error(error);
-          setError('OTP verification failed.');
+          setError('Invalid OTP code');
         }
-      });
-    } else {
-      setLoading(false);
-      setError('MSG91 script failed to load. Please refresh.');
+      );
     }
   };
 
@@ -98,30 +130,55 @@ export default function Login() {
 
       {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm text-center">{error}</div>}
 
-      <form onSubmit={handleSendOtp} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-          <div className="relative flex">
-            <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 text-gray-500 sm:text-sm">
-              +91
-            </span>
-            <div className="relative flex-1">
-              <Phone className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+      <div id="recaptcha-container"></div>
+
+      {!otpSent ? (
+        <form onSubmit={handleSendOtp} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+            <div className="relative flex">
+              <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 text-gray-500 sm:text-sm">
+                +91
+              </span>
+              <div className="relative flex-1">
+                <Phone className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="tel"
+                  required
+                  className="w-full pl-10 pr-4 py-3 rounded-r-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  placeholder="9876543210"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <button disabled={loading} type="submit" className="w-full bg-primary text-white py-3.5 rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 pt-4">
+            {loading ? 'Sending OTP...' : 'Send OTP via MSG91'}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleVerifyOtp} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Enter 6-digit OTP</label>
+            <div className="relative">
+              <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
-                type="tel"
+                type="text"
                 required
-                className="w-full pl-10 pr-4 py-3 rounded-r-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                placeholder="9876543210"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-center tracking-widest text-xl font-mono"
+                placeholder="000000"
+                maxLength="6"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
               />
             </div>
           </div>
-        </div>
-        <button disabled={loading} type="submit" className="w-full bg-primary text-white py-3.5 rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 pt-4">
-          {loading ? 'Verifying...' : 'Send OTP via MSG91'}
-        </button>
-      </form>
+          <button disabled={loading} type="submit" className="w-full bg-primary text-white py-3.5 rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 pt-4">
+            {loading ? 'Verifying...' : 'Verify & Login'}
+          </button>
+        </form>
+      )}
 
       <div className="mt-6 flex items-center gap-4">
         <div className="flex-1 h-px bg-gray-200"></div>
