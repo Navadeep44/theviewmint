@@ -36,7 +36,9 @@ export default function Register() {
           widgetId: "3664776d7149353331343032",
           tokenAuth: import.meta.env.VITE_MSG91_TOKEN || "{token}",
           exposeMethods: true,
-          captchaRenderId: 'recaptcha-container'
+          captchaRenderId: 'recaptcha-container',
+          success: (data) => console.log('MSG91 Init Success', data),
+          failure: (error) => console.error('MSG91 Init Failure', error)
         });
         clearInterval(timer);
       } else if (window.sendOtp) {
