@@ -30,10 +30,39 @@ app.use('/users', userRoutes);
 app.get('/api/stats', async (req, res) => {
   try {
     const creatorCount = await User.countDocuments({ role: 'creator' });
-    const campaignCount = await Campaign.countDocuments();
-    res.json({ creators: creatorCount, brands: 50, campaigns: campaignCount });
+    const submissionCount = await Submission.countDocuments();
+    const paidOut = await Submission.aggregate([
+      { $match: { status: 'approved' } },
+      { $group: { _id: null, total: { $sum: '$earnings' } } }
+    ]);
+
+    res.json({
+      creators: creatorCount,
+      submissions: submissionCount,
+      paidOut: paidOut.length > 0 ? paidOut[0].total : 0
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch stats' });
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// Fallback for stats
+app.get('/stats', async (req, res) => {
+  try {
+    const creatorCount = await User.countDocuments({ role: 'creator' });
+    const submissionCount = await Submission.countDocuments();
+    const paidOut = await Submission.aggregate([
+      { $match: { status: 'approved' } },
+      { $group: { _id: null, total: { $sum: '$earnings' } } }
+    ]);
+
+    res.json({
+      creators: creatorCount,
+      submissions: submissionCount,
+      paidOut: paidOut.length > 0 ? paidOut[0].total : 0
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server Error' });
   }
 });
 
