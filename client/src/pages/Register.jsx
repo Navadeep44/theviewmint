@@ -29,15 +29,26 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Initialize MSG91 for custom methods if script is loaded
-    if (window.initSendOTP) {
-      window.initSendOTP({
-        widgetId: "3664776d7149353331343032",
-        tokenAuth: import.meta.env.VITE_MSG91_TOKEN || "{token}",
-        exposeMethods: true,
-        captchaRenderId: 'recaptcha-container'
-      });
-    }
+    let timer;
+    const initializeMsg91 = () => {
+      if (window.initSendOTP && !window.sendOtp) {
+        window.initSendOTP({
+          widgetId: "3664776d7149353331343032",
+          tokenAuth: import.meta.env.VITE_MSG91_TOKEN || "{token}",
+          exposeMethods: true,
+          captchaRenderId: 'recaptcha-container'
+        });
+        clearInterval(timer);
+      } else if (window.sendOtp) {
+        clearInterval(timer);
+      }
+    };
+    
+    // Check immediately, then poll every 500ms
+    initializeMsg91();
+    timer = setInterval(initializeMsg91, 500);
+
+    return () => clearInterval(timer);
   }, []);
 
   const handleFirebaseGoogleSuccess = async (firebaseUser) => {
