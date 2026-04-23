@@ -95,16 +95,15 @@ router.post('/msg91', async (req, res) => {
   try {
     const { msg91Token, name, instagramHandle, youtubeChannel, password } = req.body;
     
-    const verifyUrl = 'https://control.msg91.com/api/v5/widget/verifyAccessToken';
+    const verifyUrl = 'https://api.msg91.com/api/v5/widget/verifyAccessToken';
     const verifyRes = await fetch(verifyUrl, {
       method: 'POST',
       headers: {
+        "authkey": process.env.MSG91_AUTH_KEY,
         "Content-Type": "application/json",
         "Accept": "application/json",
       },
       body: JSON.stringify({
-        "authkey": process.env.MSG91_AUTH_KEY,
-        "access_token": msg91Token,
         "access-token": msg91Token
       })
     });
