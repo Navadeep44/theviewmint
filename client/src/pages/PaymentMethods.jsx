@@ -58,7 +58,7 @@ export default function PaymentMethods() {
         <h1 className="text-xl font-bold text-gray-900">Payment Methods</h1>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 pt-6">
+      <div className="max-w-md mx-auto px-4 pt-6">
         
         <div className="bg-blue-50 border border-blue-100 rounded-3xl p-5 mb-6 flex items-center gap-4">
           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
