@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Phone, User, Lock } from 'lucide-react';
+import { Phone, User, Lock, Key } from 'lucide-react';
 import { FaInstagram, FaYoutube } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
 import { auth, googleProvider } from '../firebase';
@@ -20,6 +20,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    password: '',
     instagram: '',
     youtube: ''
   });
@@ -38,8 +39,8 @@ export default function Register() {
           tokenAuth: import.meta.env.VITE_MSG91_TOKEN || "{token}",
           exposeMethods: true,
           captchaRenderId: 'recaptcha-container',
-          success: (data) => console.log('MSG91 Init Success', data),
-          failure: (error) => console.error('MSG91 Init Failure', error)
+          success: (data) => console.log('OTP Init Success', data),
+          failure: (error) => console.error('OTP Init Failure', error)
         });
         clearInterval(timer);
       } else if (window.sendOtp || window.msg91Initialized) {
@@ -47,7 +48,6 @@ export default function Register() {
       }
     };
     
-    // Check immediately, then poll every 500ms
     initializeMsg91();
     timer = setInterval(initializeMsg91, 500);
 
@@ -86,6 +86,7 @@ export default function Register() {
     try {
       const payload = {
         name: formData.name,
+        password: formData.password,
         msg91Token,
         instagramHandle: formData.instagram,
         youtubeChannel: formData.youtube
@@ -103,6 +104,11 @@ export default function Register() {
 
   const handleSendOtp = (e) => {
     e.preventDefault();
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    
     setIsSubmitting(true);
     setError('');
 
@@ -118,12 +124,12 @@ export default function Register() {
         (error) => {
           setIsSubmitting(false);
           console.error(error);
-          setError('Failed to send OTP. Check your token or number.');
+          setError('Failed to send OTP. Check your connection or number.');
         }
       );
     } else {
       setIsSubmitting(false);
-      setError('MSG91 script failed to load. Please refresh.');
+      setError('OTP script failed to load. Please refresh.');
     }
   };
 
@@ -140,7 +146,7 @@ export default function Register() {
             handleMsg91Success(data.message);
           } else {
             setIsSubmitting(false);
-            setError('Invalid response from MSG91');
+            setError('Invalid response from server');
           }
         },
         (error) => {
@@ -160,7 +166,7 @@ export default function Register() {
 
       {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm text-center">{error}</div>}
 
-      <div id="recaptcha-container"></div>
+      <div id="recaptcha-container" className="flex justify-center my-4"></div>
 
       {!otpSent ? (
         <form onSubmit={handleSendOtp} className="space-y-5">
@@ -201,6 +207,22 @@ export default function Register() {
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Create Password</label>
+            <div className="relative">
+              <Key className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="password"
+                required
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+                placeholder="Must be at least 6 characters"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">You will use this password to log in next time.</p>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Instagram (@)</label>
@@ -231,7 +253,7 @@ export default function Register() {
           </div>
 
           <button type="submit" disabled={isSubmitting} className="w-full bg-primary text-white py-3.5 rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 mt-4">
-            {isSubmitting ? 'Sending OTP...' : 'Send OTP via MSG91'}
+            {isSubmitting ? 'Sending OTP...' : 'Send OTP'}
           </button>
         </form>
       ) : (

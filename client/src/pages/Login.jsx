@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Phone, Lock } from 'lucide-react';
+import { Phone, Lock, Key } from 'lucide-react';
 import { auth, googleProvider } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
 import { FcGoogle } from 'react-icons/fc';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [loginMethod, setLoginMethod] = useState('password'); // 'password' or 'otp'
+  
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [password, setPassword] = useState('');
+  
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -24,8 +29,8 @@ export default function Login() {
           tokenAuth: import.meta.env.VITE_MSG91_TOKEN || "{token}",
           exposeMethods: true,
           captchaRenderId: 'recaptcha-container',
-          success: (data) => console.log('MSG91 Init Success', data),
-          failure: (error) => console.error('MSG91 Init Failure', error)
+          success: (data) => console.log('OTP Init Success', data),
+          failure: (error) => console.error('OTP Init Failure', error)
         });
         clearInterval(timer);
       } else if (window.sendOtp || window.msg91Initialized) {
@@ -33,7 +38,6 @@ export default function Login() {
       }
     };
     
-    // Check immediately, then poll every 500ms
     initializeMsg91();
     timer = setInterval(initializeMsg91, 500);
 
@@ -56,6 +60,28 @@ export default function Login() {
     }
   };
 
+  const handlePasswordLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber.replace('+', '') : `91${phoneNumber}`;
+
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/login`, {
+        phone: formattedPhone,
+        password
+      });
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      navigate('/creator-dashboard');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Invalid phone number or password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSendOtp = (e) => {
     e.preventDefault();
     setLoading(true);
@@ -73,12 +99,12 @@ export default function Login() {
         (error) => {
           setLoading(false);
           console.error(error);
-          setError('Failed to send OTP. Check your token or number.');
+          setError('Failed to send OTP. Check your connection or number.');
         }
       );
     } else {
       setLoading(false);
-      setError('MSG91 script failed to load. Please refresh.');
+      setError('OTP script failed to load. Please refresh.');
     }
   };
 
@@ -91,12 +117,11 @@ export default function Login() {
       window.verifyOtp(
         otp,
         (data) => {
-          // data.message contains the verified token
           if (data && data.message) {
             handleMsg91Success(data.message);
           } else {
             setLoading(false);
-            setError('Invalid response from MSG91');
+            setError('Invalid response from server');
           }
         },
         (error) => {
@@ -139,15 +164,17 @@ export default function Login() {
     <div className="max-w-md mx-auto mt-16 p-8 bg-white rounded-2xl shadow-xl border border-gray-100 animate-fade-in-up">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold text-gray-900">Welcome Back</h2>
-        <p className="text-gray-500 mt-2">Log in with your phone number</p>
+        <p className="text-gray-500 mt-2">
+          {loginMethod === 'password' ? 'Log in with your phone & password' : 'Log in with a one-time password'}
+        </p>
       </div>
 
       {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm text-center">{error}</div>}
 
-      <div id="recaptcha-container"></div>
+      <div id="recaptcha-container" className="flex justify-center my-4"></div>
 
-      {!otpSent ? (
-        <form onSubmit={handleSendOtp} className="space-y-5">
+      {loginMethod === 'password' ? (
+        <form onSubmit={handlePasswordLogin} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
             <div className="relative flex">
@@ -167,31 +194,88 @@ export default function Login() {
               </div>
             </div>
           </div>
-          <button disabled={loading} type="submit" className="w-full bg-primary text-white py-3.5 rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 pt-4">
-            {loading ? 'Sending OTP...' : 'Send OTP via MSG91'}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={handleVerifyOtp} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Enter 6-digit OTP</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-medium text-gray-700">Password</label>
+            </div>
             <div className="relative">
-              <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Key className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
-                type="text"
+                type="password"
                 required
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-center tracking-widest text-xl font-mono"
-                placeholder="000000"
-                maxLength="6"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
           </div>
           <button disabled={loading} type="submit" className="w-full bg-primary text-white py-3.5 rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 pt-4">
-            {loading ? 'Verifying...' : 'Verify & Login'}
+            {loading ? 'Logging in...' : 'Log in'}
           </button>
+          
+          <div className="text-center mt-4">
+            <button type="button" onClick={() => { setLoginMethod('otp'); setError(''); }} className="text-sm text-primary hover:underline font-medium">
+              Forgot password? Login with OTP instead
+            </button>
+          </div>
         </form>
+      ) : (
+        <>
+          {!otpSent ? (
+            <form onSubmit={handleSendOtp} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <div className="relative flex">
+                  <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 text-gray-500 sm:text-sm">
+                    +91
+                  </span>
+                  <div className="relative flex-1">
+                    <Phone className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="tel"
+                      required
+                      className="w-full pl-10 pr-4 py-3 rounded-r-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      placeholder="9876543210"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <button disabled={loading} type="submit" className="w-full bg-primary text-white py-3.5 rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 pt-4">
+                {loading ? 'Sending OTP...' : 'Send OTP'}
+              </button>
+              
+              <div className="text-center mt-4">
+                <button type="button" onClick={() => { setLoginMethod('password'); setError(''); }} className="text-sm text-primary hover:underline font-medium">
+                  I remember my password. Log in instead
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Enter 6-digit OTP</label>
+                <div className="relative">
+                  <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    required
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-center tracking-widest text-xl font-mono"
+                    placeholder="000000"
+                    maxLength="6"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                  />
+                </div>
+              </div>
+              <button disabled={loading} type="submit" className="w-full bg-primary text-white py-3.5 rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 pt-4">
+                {loading ? 'Verifying...' : 'Verify & Login'}
+              </button>
+            </form>
+          )}
+        </>
       )}
 
       <div className="mt-6 flex items-center gap-4">

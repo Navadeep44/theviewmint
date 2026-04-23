@@ -33,15 +33,19 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: 'Invalid email or password' });
+    const { phone, password } = req.body;
+    const user = await User.findOne({ phone });
+    if (!user) return res.status(400).json({ error: 'Invalid phone number or password' });
+
+    if (!user.password) {
+      return res.status(400).json({ error: 'Please login with OTP and set a password in your profile, or continue using OTP.' });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ error: 'Invalid email or password' });
+    if (!isMatch) return res.status(400).json({ error: 'Invalid phone number or password' });
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+    res.json({ token, user: { id: user._id, name: user.name, phone: user.phone, role: user.role, profileImage: user.profileImage } });
   } catch (error) {
     res.status(500).json({ error: 'Server Error' });
   }
@@ -65,7 +69,6 @@ router.post('/firebase', async (req, res) => {
     let user = await User.findOne({ email });
     
     if (!user) {
-      // Create user if they don't exist
       const randomPassword = Math.random().toString(36).slice(-8);
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(randomPassword, salt);
@@ -90,9 +93,8 @@ router.post('/firebase', async (req, res) => {
 
 router.post('/msg91', async (req, res) => {
   try {
-    const { msg91Token, name, instagramHandle, youtubeChannel } = req.body;
+    const { msg91Token, name, instagramHandle, youtubeChannel, password } = req.body;
     
-    // Verify MSG91 Token
     const verifyUrl = 'https://control.msg91.com/api/v5/widget/verifyAccessToken';
     const verifyRes = await fetch(verifyUrl, {
       method: 'POST',
@@ -112,20 +114,28 @@ router.post('/msg91', async (req, res) => {
       return res.status(400).json({ error: 'OTP Verification Failed', details: msg91Data });
     }
 
-    // MSG91 returns the mobile number upon successful verification
     const phone = msg91Data.message; 
     let user = await User.findOne({ phone });
     
     if (!user) {
-      // Create user if they don't exist
+      let hashedPassword = null;
+      if (password) {
+        const salt = await bcrypt.genSalt(10);
+        hashedPassword = await bcrypt.hash(password, salt);
+      }
+
       user = new User({ 
         name: name || 'Creator', 
         phone, 
+        password: hashedPassword,
         role: 'creator',
         instagramHandle: instagramHandle || '',
         youtubeChannel: youtubeChannel || ''
       });
       await user.save();
+    } else if (password && !user.password) {
+      // If user logs in via OTP but provides a password (e.g. from a unified form), we can set it
+      // For now, we only set password on creation.
     }
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
