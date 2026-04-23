@@ -23,9 +23,10 @@ export default function DashboardCreator() {
       const token = localStorage.getItem('token');
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
+      const userId = user.id || user._id;
       const [campRes, subRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_URL}/campaigns`),
-        axios.get(`${import.meta.env.VITE_API_URL}/submissions/creator/${user.id}`, config)
+        axios.get(`${import.meta.env.VITE_API_URL}/submissions/creator/${userId}`, config)
       ]);
       setCampaigns(campRes.data);
       setSubmissions(subRes.data);

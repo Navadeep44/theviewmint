@@ -14,7 +14,8 @@ export default function Profile() {
       try {
         const token = localStorage.getItem('token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
-        const subRes = await axios.get(`${import.meta.env.VITE_API_URL}/submissions/creator/${user.id}`, config);
+        const userId = user.id || user._id;
+        const subRes = await axios.get(`${import.meta.env.VITE_API_URL}/submissions/creator/${userId}`, config);
         setSubmissions(subRes.data);
       } catch (error) {
         console.error(error);
@@ -22,12 +23,12 @@ export default function Profile() {
         setLoading(false);
       }
     };
-    if (user && user.id) {
+    if (user && (user.id || user._id)) {
       fetchProfileData();
     } else {
       navigate('/login');
     }
-  }, [user.id, navigate]);
+  }, [user.id, user._id, navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
