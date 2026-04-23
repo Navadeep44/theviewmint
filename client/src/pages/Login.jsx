@@ -38,7 +38,7 @@ export default function Login() {
     if (window.initSendOTP) {
       window.initSendOTP({
         widgetId: "3664776d7149353331343032",
-        tokenAuth: "YOUR_MSG91_WIDGET_TOKEN", // Will be passed via env if needed or hardcoded
+        tokenAuth: import.meta.env.VITE_MSG91_TOKEN,
         identifier: formattedPhone,
         success: (data) => {
           // data.message contains the JWT token
