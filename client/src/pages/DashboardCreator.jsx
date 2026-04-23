@@ -22,7 +22,7 @@ export default function DashboardCreator() {
     try {
       const token = localStorage.getItem('token');
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      
+
       const [campRes, subRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_URL}/campaigns`),
         axios.get(`${import.meta.env.VITE_API_URL}/submissions/creator/${user.id}`, config)
@@ -45,7 +45,7 @@ export default function DashboardCreator() {
         campaignId: selectedCampaign._id,
         videoLink
       }, { headers: { Authorization: `Bearer ${token}` } });
-      
+
       setSelectedCampaign(null);
       setVideoLink('');
       await fetchDashboardData();
@@ -106,7 +106,7 @@ export default function DashboardCreator() {
 
       {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
+
         {/* Available Campaigns */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100">
@@ -129,13 +129,13 @@ export default function DashboardCreator() {
                 <p className="text-sm text-gray-600 mb-4 line-clamp-2">{camp.description}</p>
                 <div className="flex justify-between items-center text-sm font-medium">
                   <span className="text-emerald-600 flex items-center gap-1">
-                    <DollarSign className="w-4 h-4"/>₹{camp.payPerView} per view
+                    <DollarSign className="w-4 h-4" />₹{camp.payPerView} per view
                   </span>
-                  <button 
+                  <button
                     onClick={() => setSelectedCampaign(camp)}
                     className="text-primary hover:text-blue-600 flex items-center gap-1"
                   >
-                    Apply <PlusCircle className="w-4 h-4"/>
+                    Apply <PlusCircle className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -159,14 +159,14 @@ export default function DashboardCreator() {
                     View Uploaded Content
                   </a>
                   <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                    <span className="flex items-center gap-1"><Eye className="w-4 h-4"/> {sub.views}</span>
-                    <span className="flex items-center gap-1"><DollarSign className="w-4 h-4"/> ₹{sub.earnings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="flex items-center gap-1"><Eye className="w-4 h-4" /> {sub.views}</span>
+                    <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" /> ₹{sub.earnings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
                 <div className="flex flex-col items-end">
-                  {sub.status === 'approved' && <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full text-xs font-medium"><CheckCircle2 className="w-4 h-4"/> Approved</span>}
-                  {sub.status === 'pending' && <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-xs font-medium"><Clock className="w-4 h-4"/> Pending</span>}
-                  {sub.status === 'rejected' && <span className="flex items-center gap-1 text-red-600 bg-red-50 px-3 py-1 rounded-full text-xs font-medium"><XCircle className="w-4 h-4"/> Rejected</span>}
+                  {sub.status === 'approved' && <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full text-xs font-medium"><CheckCircle2 className="w-4 h-4" /> Approved</span>}
+                  {sub.status === 'pending' && <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-xs font-medium"><Clock className="w-4 h-4" /> Pending</span>}
+                  {sub.status === 'rejected' && <span className="flex items-center gap-1 text-red-600 bg-red-50 px-3 py-1 rounded-full text-xs font-medium"><XCircle className="w-4 h-4" /> Rejected</span>}
                 </div>
               </div>
             ))}
@@ -179,7 +179,7 @@ export default function DashboardCreator() {
       {selectedCampaign && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in-overlay" style={{ zIndex: 9999 }}>
           <div className="bg-white rounded-3xl p-0 max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            
+
             {/* Header */}
             <div className="bg-gray-50 border-b border-gray-100 p-6 md:p-8 flex justify-between items-start">
               <div>
@@ -190,13 +190,13 @@ export default function DashboardCreator() {
                 <p className="text-gray-500 font-medium mt-1">Payout strictly limited to minimum specified targets.</p>
               </div>
               <button onClick={() => setSelectedCampaign(null)} className="bg-white p-2 text-gray-400 hover:text-gray-900 rounded-full shadow-sm border border-gray-200">
-                <XCircle className="w-6 h-6"/>
+                <XCircle className="w-6 h-6" />
               </button>
             </div>
 
             {/* Scrollable Content Body */}
             <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar">
-              
+
               {selectedCampaign.requirements?.collabTarget && (
                 <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-8 flex items-center gap-4">
                   <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shrink-0 shadow-md transform rotate-12">
@@ -250,9 +250,9 @@ export default function DashboardCreator() {
                   </ul>
                 </div>
               )}
-              
+
               <hr className="border-gray-100 mb-8" />
-              
+
               <form onSubmit={handleApply}>
                 <div className="bg-white border-2 border-gray-100 rounded-2xl p-6 shadow-sm focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 transition-all">
                   <label className="block text-sm font-bold text-gray-900 mb-2">Submit Your Delivery</label>
@@ -266,7 +266,7 @@ export default function DashboardCreator() {
                     onChange={(e) => setVideoLink(e.target.value)}
                   />
                 </div>
-                
+
                 <div className="flex gap-4 mt-6">
                   <button type="button" onClick={() => setSelectedCampaign(null)} className="flex-1 px-4 py-4 border-2 border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 transition-colors" disabled={isSubmitting}>
                     Cancel / Back

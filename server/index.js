@@ -15,11 +15,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// Standard Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/users', userRoutes);
+
+// Fallback Routes (Handles incorrect VITE_API_URL on Render missing /api)
+app.use('/auth', authRoutes);
+app.use('/campaigns', campaignRoutes);
+app.use('/submissions', submissionRoutes);
+app.use('/users', userRoutes);
 
 app.get('/api/stats', async (req, res) => {
   try {
