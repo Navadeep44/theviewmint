@@ -45,7 +45,7 @@ export default function Profile() {
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24 px-4 pt-12 animate-fade-in-up">
-      <div className="max-w-md mx-auto">
+      <div className="max-w-3xl mx-auto">
         
         {/* Profile Header */}
         <div className="flex flex-col items-center mb-8 relative">

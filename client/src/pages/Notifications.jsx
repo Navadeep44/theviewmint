@@ -13,7 +13,7 @@ export default function Notifications() {
         <h1 className="text-xl font-bold text-gray-900">Notifications</h1>
       </div>
 
-      <div className="max-w-md mx-auto px-4 pt-16 flex flex-col items-center text-center">
+      <div className="max-w-3xl mx-auto px-4 pt-16 flex flex-col items-center text-center">
         <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
           <BellOff className="w-10 h-10 text-gray-400" />
         </div>

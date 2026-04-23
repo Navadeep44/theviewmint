@@ -3,6 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Mail, Lock, User } from 'lucide-react';
 import { FaInstagram, FaYoutube } from 'react-icons/fa';
+import { FcGoogle } from 'react-icons/fc';
+import { auth, googleProvider } from '../firebase';
+import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 
 const InstagramIcon = () => (
   <FaInstagram className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-pink-500" />
@@ -24,10 +27,43 @@ export default function Register() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleFirebaseGoogleSuccess = async (firebaseUser) => {
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/firebase`, {
+        email: firebaseUser.email,
+        name: firebaseUser.displayName || 'Creator',
+        profileImage: firebaseUser.photoURL || ''
+      });
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      navigate('/creator-dashboard');
+    } catch (err) {
+      setError('Failed to authenticate with server');
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    setIsSubmitting(true);
+    setError('');
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      await handleFirebaseGoogleSuccess(result.user);
+    } catch (err) {
+      setError('Google sign up failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
     try {
+      // 1. Create in Firebase
+      await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      
+      // 2. Create in our Database
       const payload = {
         name: formData.name,
         email: formData.email,
@@ -41,7 +77,11 @@ export default function Register() {
       localStorage.setItem('user', JSON.stringify(res.data.user));
       navigate('/creator-dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'An error occurred');
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Email is already registered. Please log in.');
+      } else {
+        setError(err.response?.data?.error || err.message || 'An error occurred');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -138,6 +178,22 @@ export default function Register() {
           {isSubmitting ? 'Creating Account...' : 'Create Account'}
         </button>
       </form>
+
+      <div className="mt-6 flex items-center gap-4">
+        <div className="flex-1 h-px bg-gray-200"></div>
+        <span className="text-sm text-gray-500 font-medium">OR</span>
+        <div className="flex-1 h-px bg-gray-200"></div>
+      </div>
+
+      <button
+        type="button"
+        disabled={isSubmitting}
+        onClick={handleGoogleSignup}
+        className="w-full mt-6 bg-white border border-gray-200 text-gray-700 py-3.5 rounded-xl font-medium hover:bg-gray-50 transition-colors shadow-sm flex items-center justify-center gap-3 disabled:opacity-50"
+      >
+        <FcGoogle className="w-5 h-5" />
+        Sign up with Google
+      </button>
 
       <p className="text-center mt-6 text-gray-600 text-sm">
         Already have an account? <Link to="/login" className="text-primary font-semibold hover:underline">Log in</Link>

@@ -27,7 +27,9 @@ const ProtectedRoute = ({ children, allowedRole }) => {
   }
 
   const user = JSON.parse(userStr);
-  if (allowedRole && user.role !== allowedRole) {
+  const userRole = user.role || 'creator'; // Default to creator for older test accounts
+
+  if (allowedRole && userRole !== allowedRole) {
     return <Navigate to="/" replace />;
   }
 

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
+import { Sparkles, Menu, X, LogOut, LayoutDashboard, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar() {
@@ -61,6 +61,9 @@ export default function Navbar() {
               <>
                 <Link to={getDashboardLink()} className="text-gray-600 hover:text-primary flex items-center gap-1 transition-colors text-sm font-medium">
                   <LayoutDashboard className="w-4 h-4" /> Dashboard
+                </Link>
+                <Link to="/profile" className="text-gray-600 hover:text-primary flex items-center gap-1 transition-colors text-sm font-medium">
+                  <User className="w-4 h-4" /> Profile
                 </Link>
                 <button onClick={handleLogout} className="text-red-600 hover:text-red-700 flex items-center gap-1 transition-colors text-sm font-medium">
                   <LogOut className="w-4 h-4" /> Logout

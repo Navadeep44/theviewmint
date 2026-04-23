@@ -59,4 +59,33 @@ router.get('/me', async (req, res) => {
   }
 });
 
+router.post('/firebase', async (req, res) => {
+  try {
+    const { email, name, profileImage } = req.body;
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      // Create user if they don't exist
+      const randomPassword = Math.random().toString(36).slice(-8);
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(randomPassword, salt);
+
+      user = new User({ 
+        name: name || 'Creator', 
+        email, 
+        password: hashedPassword, 
+        role: 'creator',
+        profileImage: profileImage || ''
+      });
+      await user.save();
+    }
+
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, profileImage: user.profileImage } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
 module.exports = router;
