@@ -54,7 +54,8 @@ export default function Login() {
       localStorage.setItem('user', JSON.stringify(res.data.user));
       navigate('/creator-dashboard');
     } catch (err) {
-      setError('Failed to authenticate with server. ' + (err.response?.data?.error || ''));
+      console.error("Backend Error Details:", err.response?.data);
+      setError('Failed to authenticate with server. ' + (err.response?.data?.details?.message || err.response?.data?.error || ''));
     } finally {
       setLoading(false);
     }
@@ -117,9 +118,11 @@ export default function Login() {
       window.verifyOtp(
         otp,
         (data) => {
+          console.log("verifyOtp success data:", data);
           if (data && data.message) {
             handleMsg91Success(data.message);
           } else {
+            console.error("No data.message in verifyOtp response");
             setLoading(false);
             setError('Invalid response from server');
           }

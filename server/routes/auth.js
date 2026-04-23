@@ -104,11 +104,13 @@ router.post('/msg91', async (req, res) => {
       },
       body: JSON.stringify({
         "authkey": process.env.MSG91_AUTH_KEY,
+        "access_token": msg91Token,
         "access-token": msg91Token
       })
     });
     
     const msg91Data = await verifyRes.json();
+    console.log("MSG91 VERIFY RESPONSE:", msg91Data);
     
     if (msg91Data.type === 'error' || !msg91Data.message) {
       return res.status(400).json({ error: 'OTP Verification Failed', details: msg91Data });

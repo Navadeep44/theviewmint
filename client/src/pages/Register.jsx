@@ -97,7 +97,8 @@ export default function Register() {
       localStorage.setItem('user', JSON.stringify(res.data.user));
       navigate('/creator-dashboard');
     } catch (err) {
-      setError('Invalid OTP code or Server Error');
+      console.error("Backend Error Details:", err.response?.data);
+      setError('Invalid OTP code or Server Error: ' + (err.response?.data?.details?.message || ''));
       setIsSubmitting(false);
     }
   };
@@ -142,9 +143,11 @@ export default function Register() {
       window.verifyOtp(
         otp,
         (data) => {
+          console.log("verifyOtp success data:", data);
           if (data && data.message) {
             handleMsg91Success(data.message);
           } else {
+            console.error("No data.message in verifyOtp response");
             setIsSubmitting(false);
             setError('Invalid response from server');
           }
