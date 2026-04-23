@@ -88,4 +88,27 @@ router.post('/firebase', async (req, res) => {
   }
 });
 
+router.post('/firebase-phone', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    let user = await User.findOne({ phone });
+    
+    if (!user) {
+      // Create user if they don't exist
+      user = new User({ 
+        name: 'Creator', 
+        phone, 
+        role: 'creator',
+      });
+      await user.save();
+    }
+
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.json({ token, user: { id: user._id, name: user.name, phone: user.phone, role: user.role, profileImage: user.profileImage } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
 module.exports = router;
