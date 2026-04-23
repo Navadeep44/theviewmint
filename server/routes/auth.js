@@ -88,17 +88,42 @@ router.post('/firebase', async (req, res) => {
   }
 });
 
-router.post('/firebase-phone', async (req, res) => {
+router.post('/msg91', async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { msg91Token, name, instagramHandle, youtubeChannel } = req.body;
+    
+    // Verify MSG91 Token
+    const verifyUrl = 'https://control.msg91.com/api/v5/widget/verifyAccessToken';
+    const verifyRes = await fetch(verifyUrl, {
+      method: 'POST',
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        "authkey": process.env.MSG91_AUTH_KEY,
+        "access-token": msg91Token
+      })
+    });
+    
+    const msg91Data = await verifyRes.json();
+    
+    if (msg91Data.type === 'error' || !msg91Data.message) {
+      return res.status(400).json({ error: 'OTP Verification Failed', details: msg91Data });
+    }
+
+    // MSG91 returns the mobile number upon successful verification
+    const phone = msg91Data.message; 
     let user = await User.findOne({ phone });
     
     if (!user) {
       // Create user if they don't exist
       user = new User({ 
-        name: 'Creator', 
+        name: name || 'Creator', 
         phone, 
         role: 'creator',
+        instagramHandle: instagramHandle || '',
+        youtubeChannel: youtubeChannel || ''
       });
       await user.save();
     }
