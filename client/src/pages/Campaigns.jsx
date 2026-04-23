@@ -34,7 +34,6 @@ export default function Campaigns() {
           <div className="absolute top-20 -left-20 w-72 h-72 bg-blue-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40"></div>
           <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-emerald-500 rounded-full mix-blend-screen filter blur-[120px] opacity-20"></div>
           {/* Noise overlay */}
-          <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
         </div>
 
         <div className="relative z-10 max-w-3xl">

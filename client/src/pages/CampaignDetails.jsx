@@ -167,7 +167,6 @@ export default function CampaignDetails() {
       {/* Premium Hero Banner */}
       <div className={`w-full pt-28 pb-16 md:pt-32 md:pb-24 px-4 relative overflow-hidden rounded-b-[2rem] md:rounded-b-[3rem] ${isInsta ? 'bg-gradient-to-tr from-purple-700 via-pink-600 to-orange-500' : 'bg-gradient-to-tr from-red-700 to-red-500'}`}>
         <div className="absolute inset-0 bg-black/20 mix-blend-multiply"></div>
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
         
         <div className="max-w-5xl mx-auto relative z-10 flex flex-col md:flex-row justify-between items-end gap-6">
           <div className="text-white">
