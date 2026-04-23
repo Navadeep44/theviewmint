@@ -17,7 +17,7 @@ export default function Footer() {
               The creator-first platform. Turn your views into income by creating content for top brands.
             </p>
             <div className="flex items-center gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors">
+              <a href="https://www.instagram.com/theviewmint?igsh=MWlldDViazcxMGFmMw%3D%3D&utm_source=qr" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors">
                 <FaInstagram className="w-5 h-5" />
               </a>
               <a href="#" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors">
