@@ -12,7 +12,15 @@ const Campaign = require('./models/Campaign');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://theviewmint.in",
+    "https://www.theviewmint.in",
+    "https://theviewmint.onrender.com"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // Standard Routes

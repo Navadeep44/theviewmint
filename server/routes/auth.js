@@ -91,34 +91,73 @@ router.post('/firebase', async (req, res) => {
   }
 });
 
-router.post('/msg91', async (req, res) => {
+router.post('/send-otp', async (req, res) => {
   try {
-    const { msg91Token, name, instagramHandle, youtubeChannel, password } = req.body;
+    let { phone } = req.body;
     
-    const verifyUrl = 'https://api.msg91.com/api/v5/widget/verifyAccessToken';
-    const verifyRes = await fetch(verifyUrl, {
+    if (!phone) return res.status(400).json({ error: 'Phone number is required' });
+    
+    // Clean phone number
+    phone = phone.replace(/\D/g, '');
+    if (phone.length === 10) phone = '91' + phone;
+    if (phone.length !== 12) return res.status(400).json({ error: 'Invalid phone number format. Must be 10 digits.' });
+
+    const authKey = process.env.MSG91_AUTH_KEY || "511174ADI1xwzb4WHr69ea1ff9P1";
+    const templateId = process.env.MSG91_TEMPLATE_ID || "YOUR_TEMPLATE_ID";
+    const sendOtpUrl = `https://control.msg91.com/api/v5/otp?template_id=${templateId}&mobile=${phone}&authkey=${authKey}`;
+
+    const response = await fetch(sendOtpUrl, {
       method: 'POST',
       headers: {
-        "authkey": process.env.MSG91_AUTH_KEY || "511174ADI1xwzb4WHr69ea1ff9P1",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({
-        "access-token": msg91Token
-      })
+        'Content-Type': 'application/json',
+      }
     });
-    
-    const msg91Data = await verifyRes.json();
-    console.log("MSG91 VERIFY RESPONSE:", msg91Data);
-    
-    if (msg91Data.type === 'error' || !msg91Data.message) {
-      return res.status(400).json({ error: 'OTP Verification Failed', details: msg91Data });
+
+    const data = await response.json();
+    console.log("MSG91 SEND OTP RESPONSE:", data);
+
+    if (data.type === 'error') {
+      return res.status(400).json({ error: data.message || 'Failed to send OTP. Try again.' });
     }
 
-    const phone = msg91Data.message; 
+    res.json({ message: 'OTP sent successfully', type: 'success' });
+  } catch (error) {
+    console.error("OTP Send Error:", error);
+    res.status(500).json({ error: 'Server Error while sending OTP' });
+  }
+});
+
+router.post('/verify-otp', async (req, res) => {
+  try {
+    let { phone, otp, name, instagramHandle, youtubeChannel, password } = req.body;
+    
+    if (!phone || !otp) return res.status(400).json({ error: 'Phone and OTP are required' });
+    
+    phone = phone.replace(/\D/g, '');
+    if (phone.length === 10) phone = '91' + phone;
+
+    const authKey = process.env.MSG91_AUTH_KEY || "511174ADI1xwzb4WHr69ea1ff9P1";
+    const verifyOtpUrl = `https://control.msg91.com/api/v5/otp/verify?otp=${otp}&mobile=${phone}&authkey=${authKey}`;
+
+    const response = await fetch(verifyOtpUrl, {
+      method: 'GET' // Verify OTP is a GET request as per MSG91 docs for this endpoint
+    });
+
+    const data = await response.json();
+    console.log("MSG91 VERIFY OTP RESPONSE:", data);
+
+    if (data.type === 'error') {
+      let errorMessage = 'Invalid OTP';
+      if (data.message === 'otp not match') errorMessage = 'Invalid OTP code';
+      if (data.message === 'otp expired') errorMessage = 'OTP expired. Please try again.';
+      return res.status(400).json({ error: errorMessage, details: data });
+    }
+
+    // OTP Verified Successfully
     let user = await User.findOne({ phone });
     
     if (!user) {
+      // Create new user
       let hashedPassword = null;
       if (password) {
         const salt = await bcrypt.genSalt(10);
@@ -135,15 +174,17 @@ router.post('/msg91', async (req, res) => {
       });
       await user.save();
     } else if (password && !user.password) {
-      // If user logs in via OTP but provides a password (e.g. from a unified form), we can set it
-      // For now, we only set password on creation.
+      // Set password if logging in via unified form
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+      await user.save();
     }
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.json({ token, user: { id: user._id, name: user.name, phone: user.phone, role: user.role, profileImage: user.profileImage } });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server Error' });
+    console.error("OTP Verify Error:", error);
+    res.status(500).json({ error: 'Server Error while verifying OTP' });
   }
 });
 

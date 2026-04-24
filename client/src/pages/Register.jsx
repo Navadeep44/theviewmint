@@ -29,30 +29,7 @@ export default function Register() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    let timer;
-    const initializeMsg91 = () => {
-      if (window.initSendOTP && !window.sendOtp && !window.msg91Initialized) {
-        window.msg91Initialized = true;
-        window.initSendOTP({
-          widgetId: "3664776d7149353331343032",
-          tokenAuth: import.meta.env.VITE_MSG91_TOKEN || "{token}",
-          exposeMethods: true,
-          captchaRenderId: 'recaptcha-container',
-          success: (data) => console.log('OTP Init Success', data),
-          failure: (error) => console.error('OTP Init Failure', error)
-        });
-        clearInterval(timer);
-      } else if (window.sendOtp || window.msg91Initialized) {
-        clearInterval(timer);
-      }
-    };
-    
-    initializeMsg91();
-    timer = setInterval(initializeMsg91, 500);
-
-    return () => clearInterval(timer);
-  }, []);
+  // MSG91 widget removed
 
   const handleFirebaseGoogleSuccess = async (firebaseUser) => {
     try {
@@ -82,28 +59,9 @@ export default function Register() {
     }
   };
 
-  const handleMsg91Success = async (msg91Token) => {
-    try {
-      const payload = {
-        name: formData.name,
-        password: formData.password,
-        msg91Token,
-        instagramHandle: formData.instagram,
-        youtubeChannel: formData.youtube
-      };
+  // Removed handleMsg91Success
 
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/msg91`, payload);
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate('/creator-dashboard');
-    } catch (err) {
-      console.error("Backend Error Details:", err.response?.data);
-      setError('Invalid OTP code or Server Error: ' + (err.response?.data?.details?.message || ''));
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSendOtp = (e) => {
+  const handleSendOtp = async (e) => {
     e.preventDefault();
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
@@ -115,48 +73,45 @@ export default function Register() {
 
     const formattedPhone = formData.phone.startsWith('+') ? formData.phone.replace('+', '') : `91${formData.phone}`;
 
-    if (window.sendOtp) {
-      window.sendOtp(
-        formattedPhone,
-        () => {
-          setOtpSent(true);
-          setIsSubmitting(false);
-        },
-        (error) => {
-          setIsSubmitting(false);
-          console.error(error);
-          setError('Failed to send OTP. Check your connection or number.');
-        }
-      );
-    } else {
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}/auth/send-otp`, {
+        phone: formattedPhone
+      });
+      setOtpSent(true);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.error || 'Failed to send OTP. Check your connection or number.');
+    } finally {
       setIsSubmitting(false);
-      setError('OTP script failed to load. Please refresh.');
     }
   };
 
-  const handleVerifyOtp = (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
 
-    if (window.verifyOtp) {
-      window.verifyOtp(
+    const formattedPhone = formData.phone.startsWith('+') ? formData.phone.replace('+', '') : `91${formData.phone}`;
+
+    try {
+      const payload = {
+        name: formData.name,
+        phone: formattedPhone,
+        password: formData.password,
         otp,
-        (data) => {
-          console.log("verifyOtp success data:", data);
-          if (data && data.message) {
-            handleMsg91Success(data.message);
-          } else {
-            console.error("No data.message in verifyOtp response");
-            setIsSubmitting(false);
-            setError('Invalid response from server');
-          }
-        },
-        (error) => {
-          setIsSubmitting(false);
-          setError('Invalid OTP code');
-        }
-      );
+        instagramHandle: formData.instagram,
+        youtubeChannel: formData.youtube
+      };
+
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/verify-otp`, payload);
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      navigate('/creator-dashboard');
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.error || 'Invalid OTP code');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

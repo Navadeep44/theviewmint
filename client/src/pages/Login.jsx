@@ -19,47 +19,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let timer;
-    const initializeMsg91 = () => {
-      if (window.initSendOTP && !window.sendOtp && !window.msg91Initialized) {
-        window.msg91Initialized = true;
-        window.initSendOTP({
-          widgetId: "3664776d7149353331343032",
-          tokenAuth: import.meta.env.VITE_MSG91_TOKEN || "{token}",
-          exposeMethods: true,
-          captchaRenderId: 'recaptcha-container',
-          success: (data) => console.log('OTP Init Success', data),
-          failure: (error) => console.error('OTP Init Failure', error)
-        });
-        clearInterval(timer);
-      } else if (window.sendOtp || window.msg91Initialized) {
-        clearInterval(timer);
-      }
-    };
-    
-    initializeMsg91();
-    timer = setInterval(initializeMsg91, 500);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleMsg91Success = async (msg91Token) => {
-    setLoading(true);
-    try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/msg91`, {
-        msg91Token
-      });
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate('/creator-dashboard');
-    } catch (err) {
-      console.error("Backend Error Details:", err.response?.data);
-      setError('Failed to authenticate with server. ' + (err.response?.data?.details?.message || err.response?.data?.error || ''));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // MSG91 widget removed
 
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
@@ -83,55 +43,46 @@ export default function Login() {
     }
   };
 
-  const handleSendOtp = (e) => {
+  const handleSendOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     
     const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber.replace('+', '') : `91${phoneNumber}`;
 
-    if (window.sendOtp) {
-      window.sendOtp(
-        formattedPhone,
-        () => {
-          setOtpSent(true);
-          setLoading(false);
-        },
-        (error) => {
-          setLoading(false);
-          console.error(error);
-          setError('Failed to send OTP. Check your connection or number.');
-        }
-      );
-    } else {
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}/auth/send-otp`, {
+        phone: formattedPhone
+      });
+      setOtpSent(true);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.error || 'Failed to send OTP. Check your connection or number.');
+    } finally {
       setLoading(false);
-      setError('OTP script failed to load. Please refresh.');
     }
   };
 
-  const handleVerifyOtp = (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    if (window.verifyOtp) {
-      window.verifyOtp(
-        otp,
-        (data) => {
-          console.log("verifyOtp success data:", data);
-          if (data && data.message) {
-            handleMsg91Success(data.message);
-          } else {
-            console.error("No data.message in verifyOtp response");
-            setLoading(false);
-            setError('Invalid response from server');
-          }
-        },
-        (error) => {
-          setLoading(false);
-          setError('Invalid OTP code');
-        }
-      );
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber.replace('+', '') : `91${phoneNumber}`;
+
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/verify-otp`, {
+        phone: formattedPhone,
+        otp
+      });
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      navigate('/creator-dashboard');
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.error || 'Invalid OTP code');
+    } finally {
+      setLoading(false);
     }
   };
 
