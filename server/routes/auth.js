@@ -99,7 +99,7 @@ router.post('/msg91', async (req, res) => {
     const verifyRes = await fetch(verifyUrl, {
       method: 'POST',
       headers: {
-        "authkey": process.env.MSG91_AUTH_KEY,
+        "authkey": process.env.MSG91_AUTH_KEY || "511174ADI1xwzb4WHr69ea1ff9P1",
         "Content-Type": "application/json",
         "Accept": "application/json",
       },
