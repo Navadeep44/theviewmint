@@ -77,6 +77,7 @@ io.on('connection', (socket) => {
 // Helmet: Sets various HTTP headers for security
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
   contentSecurityPolicy: false, // Managed by frontend
 }));
 
@@ -217,10 +218,14 @@ mongoose.connect(process.env.MONGO_URI, {
 // ─── Graceful Shutdown ────────────────────────────────────────────────────────
 process.on('SIGTERM', () => {
   console.log('[Server] SIGTERM received. Closing gracefully...');
-  server.close(() => {
-    mongoose.connection.close(false, () => {
+  server.close(async () => {
+    try {
+      await mongoose.connection.close(false);
       console.log('[Server] Process terminated.');
       process.exit(0);
-    });
+    } catch (err) {
+      console.error('[Server] Error during shutdown:', err);
+      process.exit(1);
+    }
   });
 });
