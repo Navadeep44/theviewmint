@@ -106,7 +106,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // MongoDB injection sanitization
-app.use(mongoSanitize());
+// app.use(mongoSanitize());
 
 // Global API rate limit (generous — specific routes have stricter limits)
 const globalLimiter = rateLimit({

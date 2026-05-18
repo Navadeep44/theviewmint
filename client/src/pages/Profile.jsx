@@ -74,9 +74,9 @@ export default function Profile() {
           <p className="text-gray-500 text-sm">@{p.username || p.phone}</p>
           
           <div className="flex gap-3 mt-4">
-            {p.instagramHandle && <div className="bg-white p-2 rounded-full shadow-sm text-pink-600"><Instagram className="w-4 h-4"/></div>}
-            {p.youtubeChannel && <div className="bg-white p-2 rounded-full shadow-sm text-red-600"><Youtube className="w-4 h-4"/></div>}
-            {p.twitterHandle && <div className="bg-white p-2 rounded-full shadow-sm text-blue-400"><Twitter className="w-4 h-4"/></div>}
+            {p.instagramHandle && <div className="bg-white p-2 rounded-full shadow-sm text-pink-600"><FaInstagram className="w-4 h-4"/></div>}
+            {p.youtubeChannel && <div className="bg-white p-2 rounded-full shadow-sm text-red-600"><FaYoutube className="w-4 h-4"/></div>}
+            {p.twitterHandle && <div className="bg-white p-2 rounded-full shadow-sm text-blue-400"><FaTwitter className="w-4 h-4"/></div>}
           </div>
         </div>
 
