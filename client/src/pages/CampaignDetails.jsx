@@ -1,144 +1,33 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Dot, Activity, ArrowLeft, Building2, Flame, DollarSign, Target, CheckCircle2, ShieldCheck, Users, Copy, Sparkles, MessageSquare } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import api from '../lib/api';
+import { Dot, Activity, ArrowLeft, Building2, Flame, DollarSign, Target, CheckCircle2, ShieldCheck, Users, Copy, Sparkles, MessageSquare, AlertCircle } from 'lucide-react';
 import { FaInstagram, FaYoutube } from 'react-icons/fa';
-
-const SCRIPT_SUGGESTIONS = {
-  Telugu: `“Thakkuva followers unnaya meeku…? 😶
-Kani meeku money kavala? 💸
-
-Nijam cheptaa…
-Chala mandi creators daily reels chestunnaru…
-Views kuda vastunnayi…
-Kani income ZERO 😞
-
-Enduku ante…
-Vallaki correct platform ledu.
-
-Kani ippudu solution vachindi 🔥
-TheViewMint ane website…
-
-Ikkada em chestaru ante👇
-Brands campaigns create chestaru
-Meeru aa campaigns ni select chesukoni
-Mee reel create chesi post chestaru
-
-And best part enti ante…
-Mee reel ki vachina views batti direct ga MONEY vasthundi 💰🔥
-
-Example cheptaa👇
-Oka reel ki 10,000 views vachindi anukondi
-Meeru easy ga ₹500–₹1000 earn cheyyachu 💸
-
-Mari important point👇
-Followers ekkuva undali ani avasaram ledu
-Mee content bagunte chalu!
-
-Students, small creators, beginners…
-Andhariki idi perfect opportunity 🚀
-
-So ippati varaku free ga content create chesthe…
-Ippudu ade content tho income start cheyandi 🔥
-
-Ippude join avvu 👇
-Link bio lo undi 🔗
-TheViewMint — Mee reels ni income ga marchuko 💸🔥”`,
-  Hindi: `“Aapke followers kam hain…? 😶
-Lekin aapko paise kamaane hain? 💸
-
-Sach bolu…
-Bahut saare creators daily reels bana rahe hain…
-Views bhi aa rahe hain…
-Lekin income ZERO hai 😞
-
-Kyun?
-Kyuki unke paas sahi platform nahi hai.
-
-Ab solution aa gaya hai 🔥
-TheViewMint naam ka platform…
-
-Yahan kya hota hai👇
-Brands campaigns daalte hain
-Aap un campaigns ko select karte ho
-Reel banate ho aur post karte ho
-
-Aur sabse important👇
-Aapko views ke hisaab se direct PAISA milta hai 💰🔥
-
-Example👇
-Agar aapki reel pe 10,000 views aaye…
-Toh aap ₹500–₹1000 easily kama sakte ho 💸
-
-Aur sabse badi baat👇
-Zyada followers ki zarurat nahi hai
-Sirf content accha hona chahiye!
-
-Students ho, beginners ho, ya small creators…
-Sabke liye perfect opportunity 🚀
-
-Ab free mein content mat banao…
-Usse income banao 🔥
-
-Abhi join karo 👇
-Link bio mein hai 🔗
-TheViewMint — reels se paise kamao 💸🔥”`,
-  English: `“Got low followers…? 😶
-But still want to make money? 💸
-
-Let me be honest…
-Thousands of creators post reels every day…
-They get views…
-But earn NOTHING 😞
-
-Why?
-Because they don’t have the right platform.
-
-Now there’s a solution 🔥
-It’s called TheViewMint
-
-Here’s how it works👇
-Brands create campaigns
-You select a campaign
-Create a reel and post it
-
-And the best part👇
-You get paid based on your views 💰🔥
-
-For example👇
-If your reel gets 10,000 views…
-You can easily earn ₹500–₹1000 💸
-
-And here’s the game-changer👇
-You don’t need big followers
-Good content is enough!
-
-Whether you’re a student, beginner, or small creator…
-This is a huge opportunity 🚀
-
-So stop posting content for free…
-Start earning from it 🔥
-
-Join now 👇
-Link in bio 🔗
-TheViewMint — turn your reels into income 💸🔥”`
-};
+import toast from 'react-hot-toast';
 
 export default function CampaignDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
+  const [hasApplied, setHasApplied] = useState(false);
+  const [applicationStatus, setApplicationStatus] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeLanguage, setActiveLanguage] = useState('Telugu');
-  const [copied, setCopied] = useState(false);
+  const [applying, setApplying] = useState(false);
+
+  const [applyModalOpen, setApplyModalOpen] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     const fetchCampaign = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/campaigns/${id}`);
-        setCampaign(res.data);
+        const res = await api.get(`/campaigns/${id}`);
+        setCampaign(res.data.campaign);
+        setHasApplied(res.data.hasApplied);
+        setApplicationStatus(res.data.applicationStatus);
       } catch (err) {
         console.error(err);
+        toast.error('Failed to load campaign details.');
       } finally {
         setLoading(false);
       }
@@ -146,14 +35,28 @@ export default function CampaignDetails() {
     fetchCampaign();
   }, [id]);
 
-  const handleCopyScript = () => {
-    navigator.clipboard.writeText(SCRIPT_SUGGESTIONS[activeLanguage]);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleApply = async (e) => {
+    e.preventDefault();
+    if (!termsAccepted) {
+      toast.error('You must accept the terms to apply.');
+      return;
+    }
+    setApplying(true);
+    try {
+      await api.post(`/campaigns/${id}/apply`, { termsAccepted, note });
+      toast.success('Application submitted successfully! 🚀');
+      setHasApplied(true);
+      setApplicationStatus('applied');
+      setApplyModalOpen(false);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to apply.');
+    } finally {
+      setApplying(false);
+    }
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen"><Activity className="w-12 h-12 text-primary animate-spin" /></div>;
+    return <div className="flex justify-center items-center h-screen"><Activity className="w-12 h-12 text-violet-600 animate-spin" /></div>;
   }
 
   if (!campaign) {
@@ -161,6 +64,7 @@ export default function CampaignDetails() {
   }
 
   const isInsta = campaign.platform === 'Instagram';
+  const deadlinePassed = campaign.deadline && new Date(campaign.deadline) < new Date();
 
   return (
     <div className="animate-fade-in-up pb-24">
@@ -178,12 +82,18 @@ export default function CampaignDetails() {
                 {isInsta ? <FaInstagram className="w-4 h-4"/> : <FaYoutube className="w-4 h-4"/>}
                 {campaign.platform}
               </span>
-              <span className="bg-emerald-500/80 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-widest flex items-center gap-1 border border-emerald-400/50">
-                <Dot className="w-5 h-5 text-white animate-pulse" /> Live Now
-              </span>
+              {!deadlinePassed ? (
+                <span className="bg-emerald-500/80 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-widest flex items-center gap-1 border border-emerald-400/50">
+                  <Dot className="w-5 h-5 text-white animate-pulse" /> Live Now
+                </span>
+              ) : (
+                <span className="bg-red-500/80 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-widest flex items-center gap-1 border border-red-400/50">
+                  <AlertCircle className="w-4 h-4 text-white" /> Closed
+                </span>
+              )}
             </div>
             <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">{campaign.title}</h1>
-            <p className="text-xl md:text-2xl text-white/90 max-w-2xl font-medium">by Premium Brand</p>
+            <p className="text-xl md:text-2xl text-white/90 max-w-2xl font-medium">by {campaign.brandName}</p>
           </div>
         </div>
       </div>
@@ -194,102 +104,34 @@ export default function CampaignDetails() {
           {/* Main Details Panel */}
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Sparkles className="text-primary"/> The Objective</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Sparkles className="text-violet-600"/> The Objective</h2>
               <p className="text-gray-600 text-base md:text-lg leading-relaxed whitespace-pre-wrap">{campaign.description}</p>
             </div>
 
-            {/* Rich Requirements Engine */}
-            {campaign.requirements && (
-              <div className="bg-white rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100">
-                <div className="bg-gray-900 p-6 md:p-8 text-white">
-                  <h2 className="text-2xl font-bold flex items-center gap-2"><ShieldCheck className="text-emerald-400"/> Campaign Guidelines</h2>
-                  <p className="text-gray-400 mt-2">Strictly adhere to the following elements to secure your payout.</p>
-                </div>
-                
-                <div className="p-6 md:p-8 space-y-10">
-                  
-                  {campaign.requirements.collabTarget && (
-                    <div className="flex border-l-4 border-blue-500 pl-6 py-2">
-                      <div>
-                        <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide flex items-center gap-2 mb-2"><Users className="w-4 h-4 text-blue-500"/> Partner Collab</h4>
-                        <p className="text-gray-600">You must invite <span className="font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded font-bold cursor-copy active:bg-blue-100 transition-colors" onClick={() => navigator.clipboard.writeText(campaign.requirements.collabTarget)}>{campaign.requirements.collabTarget}</span> as a dual-collaborator on Instagram before posting.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {campaign.requirements.hashtags?.length > 0 && (
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide mb-4">Required Hashtags</h4>
-                      <div className="flex flex-wrap gap-3">
-                        {campaign.requirements.hashtags.map((tag, i) => (
-                          <div key={i} className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-xl">
-                            <span className="font-bold text-gray-700">{tag}</span>
-                            <Copy className="w-3 h-3 text-gray-400 cursor-pointer hover:text-gray-900" onClick={() => navigator.clipboard.writeText(tag)} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {campaign.requirements.terms?.length > 0 && (
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide mb-4">Terms & Regulations</h4>
-                      <ul className="space-y-4 bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                        {campaign.requirements.terms.map((term, i) => (
-                          <li key={i} className="flex gap-3 items-start text-gray-600">
-                            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                            <span className="leading-relaxed">{term}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                </div>
-              </div>
-            )}
-
-            {/* Suggested Scripts Section */}
+            {/* Campaign Guidelines */}
             <div className="bg-white rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100">
-              <div className="bg-primary/5 border-b border-primary/10 p-6 md:p-8">
-                <h2 className="text-2xl font-bold text-primary flex items-center gap-2"><MessageSquare className="w-6 h-6"/> Suggested Scripts</h2>
-                <p className="text-gray-600 mt-2 text-sm md:text-base">Use these proven scripts as a reference for your reel to maximize engagement and payouts.</p>
+              <div className="bg-gray-900 p-6 md:p-8 text-white">
+                <h2 className="text-2xl font-bold flex items-center gap-2"><ShieldCheck className="text-emerald-400"/> Campaign Guidelines</h2>
+                <p className="text-gray-400 mt-2">Strictly adhere to the following elements to ensure approval.</p>
               </div>
               
-              <div className="p-6 md:p-8">
-                {/* Language Tabs */}
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-                  {Object.keys(SCRIPT_SUGGESTIONS).map((lang) => (
-                    <button
-                      key={lang}
-                      onClick={() => setActiveLanguage(lang)}
-                      className={`px-6 py-2.5 rounded-full font-bold text-sm transition-colors whitespace-nowrap ${
-                        activeLanguage === lang 
-                        ? 'bg-primary text-white shadow-md' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      {lang === 'Telugu' ? '🇮🇳 TELUGU' : lang === 'Hindi' ? '🇮🇳 HINDI' : '🌍 ENGLISH'}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Script Display */}
-                <div className="relative bg-gray-50 border border-gray-200 rounded-2xl p-6 md:p-8">
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">{activeLanguage} SCRIPT</span>
-                    <button 
-                      onClick={handleCopyScript}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${copied ? 'bg-emerald-100 text-emerald-700' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'}`}
-                    >
-                      {copied ? <CheckCircle2 className="w-4 h-4"/> : <Copy className="w-4 h-4"/>}
-                      {copied ? 'Copied!' : 'Copy Script'}
-                    </button>
-                  </div>
-                  
-                  <pre className="whitespace-pre-wrap font-sans text-gray-800 text-base md:text-lg leading-relaxed">
-                    {SCRIPT_SUGGESTIONS[activeLanguage]}
-                  </pre>
+              <div className="p-6 md:p-8 space-y-8">
+                <div>
+                  <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide mb-4">Terms & Regulations</h4>
+                  <ul className="space-y-4 bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                    <li className="flex gap-3 items-start text-gray-600">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">Content must be original and created specifically for this campaign.</span>
+                    </li>
+                    <li className="flex gap-3 items-start text-gray-600">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">Do not delete the post or reel for at least 30 days after approval.</span>
+                    </li>
+                    <li className="flex gap-3 items-start text-gray-600">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">Ensure good lighting, clear audio, and professional presentation.</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -298,38 +140,89 @@ export default function CampaignDetails() {
 
           {/* Right Sidebar */}
           <div className="space-y-6">
-            <div className="bg-white rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-primary/10">
+            <div className="bg-white rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-violet-100">
               <h3 className="font-bold text-lg text-gray-900 mb-6 uppercase tracking-wider text-center">Reward Details</h3>
               
               <div className="bg-emerald-50 rounded-2xl p-6 text-center border border-emerald-100 mb-4">
                 <Flame className="w-8 h-8 text-orange-500 mx-auto mb-2" />
-                <p className="text-emerald-700 font-semibold mb-1">Pay per 1k Views</p>
-                <p className="text-4xl font-black text-emerald-900">₹{(campaign.payPerView * 1000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-emerald-700 font-semibold mb-1">Max Payout per Creator</p>
+                <p className="text-4xl font-black text-emerald-900">₹{(campaign.creatorPayout || 0).toLocaleString('en-IN')}</p>
               </div>
 
               <div className="flex justify-between items-center py-4 border-b border-gray-100">
                 <div className="flex items-center gap-2 text-gray-500"><Target className="w-5 h-5"/> Total Target Pool</div>
-                <div className="font-bold text-gray-900">₹{campaign.budget.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="font-bold text-gray-900">₹{(campaign.totalBudget || 0).toLocaleString('en-IN')}</div>
               </div>
               <div className="flex justify-between items-center py-4 border-b border-gray-100">
                 <div className="flex items-center gap-2 text-gray-500"><Building2 className="w-5 h-5"/> Brand Sponsor</div>
-                <div className="font-bold text-gray-900">Premium Brand</div>
+                <div className="font-bold text-gray-900">{campaign.brandName}</div>
               </div>
 
-              <Link to="/creator-dashboard" className="mt-8 w-full block text-center bg-gray-900 text-white py-5 rounded-2xl font-bold text-lg hover:bg-black hover:-translate-y-1 transition-all shadow-xl hover:shadow-2xl">
-                Apply in Dashboard
-              </Link>
-            </div>
-            
-            <div className="bg-blue-50 rounded-3xl p-6 border border-blue-100 text-center">
-              <ShieldCheck className="w-8 h-8 text-blue-500 mx-auto mb-3" />
-              <h4 className="font-bold text-blue-900 mb-2">Vault Secured</h4>
-              <p className="text-sm text-blue-700">The total budget is held securely in the platform vault to guarantee immediate payouts when view targets are hit.</p>
+              <div className="mt-8">
+                {hasApplied ? (
+                  <button disabled className="w-full text-center bg-gray-100 text-emerald-600 py-5 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 border border-emerald-200">
+                    <CheckCircle2 className="w-5 h-5" /> Applied ({applicationStatus})
+                  </button>
+                ) : deadlinePassed ? (
+                  <button disabled className="w-full text-center bg-gray-100 text-red-500 py-5 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 border border-red-200">
+                    <AlertCircle className="w-5 h-5" /> Deadline Passed
+                  </button>
+                ) : (
+                  <button onClick={() => setApplyModalOpen(true)} className="w-full text-center bg-gray-900 text-white py-5 rounded-2xl font-bold text-lg hover:bg-black hover:-translate-y-1 transition-all shadow-xl hover:shadow-2xl">
+                    Apply for Campaign
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
         </div>
       </div>
+
+      {/* Apply Modal */}
+      {applyModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl relative">
+            <button onClick={() => setApplyModalOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900">✕</button>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Apply to Campaign</h3>
+            <p className="text-gray-500 mb-6">Submit your application to collaborate with {campaign.brandName}.</p>
+            
+            <form onSubmit={handleApply} className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-900 mb-2">Why are you a good fit? (Optional)</label>
+                <textarea 
+                  rows={3} 
+                  className="w-full border border-gray-200 rounded-xl p-3 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                  placeholder="Share a brief note about your audience or content style..."
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-start gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <input 
+                  type="checkbox" 
+                  id="terms" 
+                  className="mt-1 w-4 h-4 text-violet-600 rounded border-gray-300 focus:ring-violet-500"
+                  checked={termsAccepted}
+                  onChange={e => setTermsAccepted(e.target.checked)}
+                />
+                <label htmlFor="terms" className="text-sm text-gray-600 cursor-pointer">
+                  I have read and agree to the campaign guidelines. I understand that my content must be original and meet all requirements to receive payout.
+                </label>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={applying || !termsAccepted} 
+                className="w-full py-4 bg-violet-600 text-white rounded-xl font-bold text-lg hover:bg-violet-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {applying ? 'Submitting Application...' : 'Submit Application'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

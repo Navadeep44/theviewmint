@@ -1,27 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../lib/api';
 import { ArrowLeft, Loader2, CreditCard, Save, ShieldCheck } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function PaymentMethods() {
   const [upiId, setUpiId] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfile = async () => {
-      setLoading(true);
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/profile`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get('/users/profile');
         if (res.data.upiId) {
           setUpiId(res.data.upiId);
         }
       } catch (error) {
-        console.error('Error fetching payment methods', error);
+        toast.error('Error fetching payment methods');
       } finally {
         setLoading(false);
       }
@@ -33,20 +30,18 @@ export default function PaymentMethods() {
     e.preventDefault();
     setSaving(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(`${import.meta.env.VITE_API_URL}/users/profile`, { upiId }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put('/users/profile', { upiId });
+      toast.success('UPI ID saved securely.');
       navigate('/profile');
     } catch (error) {
-      console.error('Error saving payment methods', error);
+      toast.error(error.response?.data?.error || 'Error saving payment methods');
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+    return <div className="flex justify-center items-center min-h-screen"><Loader2 className="w-10 h-10 animate-spin text-emerald-600" /></div>;
   }
 
   return (
@@ -60,13 +55,13 @@ export default function PaymentMethods() {
 
       <div className="max-w-md mx-auto px-4 pt-6">
         
-        <div className="bg-blue-50 border border-blue-100 rounded-3xl p-5 mb-6 flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-6 h-6 text-blue-600" />
+        <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-5 mb-6 flex items-center gap-4">
+          <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-6 h-6 text-emerald-600" />
           </div>
           <div>
-            <h4 className="font-bold text-blue-900">Secure Payments</h4>
-            <p className="text-blue-700 text-sm mt-0.5 leading-tight">
+            <h4 className="font-bold text-emerald-900">Secure Payments</h4>
+            <p className="text-emerald-700 text-sm mt-0.5 leading-tight">
               We process all payouts via UPI. Please ensure your UPI ID is correct to avoid payment delays.
             </p>
           </div>

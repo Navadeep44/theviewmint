@@ -1,287 +1,240 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { DollarSign, Eye, Video, PlusCircle, CheckCircle2, XCircle, Clock, Activity, Users } from 'lucide-react';
+import api from '../lib/api';
+import { useSocket } from '../context/SocketContext';
+import { DollarSign, Eye, Video, Activity, CheckCircle2, XCircle, Clock, Calendar, ExternalLink, ArrowRight } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function DashboardCreator() {
-  const [campaigns, setCampaigns] = useState([]);
+  const { socket } = useSocket();
+  const [stats, setStats] = useState(null);
   const [submissions, setSubmissions] = useState([]);
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || {});
+  const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Submitting state
-  const [selectedCampaign, setSelectedCampaign] = useState(null);
-  const [videoLink, setVideoLink] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboard = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-
-      const userId = user.id || user._id;
-      const [campRes, subRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/campaigns`),
-        axios.get(`${import.meta.env.VITE_API_URL}/submissions/creator/${userId}`, config)
-      ]);
-      setCampaigns(campRes.data);
-      setSubmissions(subRes.data);
-    } catch (error) {
-      console.error(error);
+      const res = await api.get('/users/dashboard-stats');
+      setStats(res.data.stats);
+      setSubmissions(res.data.submissions);
+      setApplications(res.data.applications);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load dashboard data.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApply = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${import.meta.env.VITE_API_URL}/submissions`, {
-        campaignId: selectedCampaign._id,
-        videoLink
-      }, { headers: { Authorization: `Bearer ${token}` } });
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
 
-      setSelectedCampaign(null);
-      setVideoLink('');
-      await fetchDashboardData();
-      alert('Submission successful!');
-    } catch (error) {
-      alert(error.response?.data?.error || 'Error submitting');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const totalEarnings = submissions.reduce((acc, sub) => acc + (sub.earnings || 0), 0);
-  const totalViews = submissions.reduce((acc, sub) => acc + (sub.views || 0), 0);
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => fetchDashboard();
+    socket.on('submission_updated', handleUpdate);
+    socket.on('payout_received', handleUpdate);
+    return () => {
+      socket.off('submission_updated', handleUpdate);
+      socket.off('payout_received', handleUpdate);
+    };
+  }, [socket]);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64"><Activity className="w-10 h-10 animate-spin text-primary" /></div>;
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Activity className="w-10 h-10 animate-spin text-violet-600" />
+      </div>
+    );
   }
+
+  const s = stats || {};
 
   return (
     <div className="space-y-8 animate-fade-in-up">
-      {/* Header & Stats */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Creator Dashboard</h1>
-          <p className="text-gray-500">Welcome back, {user.name} 👋</p>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Creator Dashboard</h1>
+        <p className="text-gray-500 mt-1">Track your earnings, submissions, and campaign status.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Earnings */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition-shadow">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
             <DollarSign className="w-6 h-6 text-emerald-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium">Total Earnings</p>
-            <p className="text-2xl font-bold text-gray-900">₹{totalEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-sm font-medium text-gray-500">Total Earnings</p>
+            <p className="text-2xl font-bold text-gray-900">₹{(s.totalEarnings || 0).toLocaleString('en-IN')}</p>
+            <p className="text-xs text-gray-400 mt-1">₹{(s.withdrawableAmount || 0).toLocaleString('en-IN')} available to withdraw</p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+
+        {/* Views */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition-shadow">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
             <Eye className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium">Total Views Tracked</p>
-            <p className="text-2xl font-bold text-gray-900">{totalViews.toLocaleString()}</p>
+            <p className="text-sm font-medium text-gray-500">Total Views</p>
+            <p className="text-2xl font-bold text-gray-900">{(s.totalViews || 0).toLocaleString('en-IN')}</p>
+            <p className="text-xs text-gray-400 mt-1">Across all approved content</p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-            <Video className="w-6 h-6 text-purple-600" />
+
+        {/* Submissions */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition-shadow">
+          <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+            <Video className="w-6 h-6 text-violet-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium">Active Submissions</p>
-            <p className="text-2xl font-bold text-gray-900">{submissions.length}</p>
+            <p className="text-sm font-medium text-gray-500">Submissions</p>
+            <p className="text-2xl font-bold text-gray-900">{s.totalSubmissions || 0}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              <span className="text-emerald-500 font-medium">{s.approvedSubmissions || 0} approved</span> · {s.pendingSubmissions || 0} pending
+            </p>
+          </div>
+        </div>
+
+        {/* Performance Score */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition-shadow">
+          <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+            <Activity className="w-6 h-6 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Performance Score</p>
+            <p className="text-2xl font-bold text-gray-900">{s.performanceScore || 0}%</p>
+            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div className="bg-amber-500 h-full rounded-full" style={{ width: `${s.performanceScore || 0}%` }} />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-        {/* Available Campaigns */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-xl font-bold text-gray-900">Available Campaigns</h2>
+        {/* Active Applications */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900">Your Applications</h2>
+            <Link to="/campaigns" className="text-sm text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1">
+              Find More <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
-          <div className="divide-y divide-gray-100">
-            {campaigns.length === 0 ? (
-              <p className="p-6 text-gray-500">No active campaigns available.</p>
-            ) : campaigns.map(camp => (
-              <div key={camp._id} className="p-6 hover:bg-gray-50 transition-colors">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <Link to={`/campaign/${camp._id}`} className="font-semibold text-lg text-gray-900 hover:text-primary transition-colors inline-block">{camp.title}</Link>
-                    <p className="text-sm text-gray-500">by Premium Brand</p>
-                  </div>
-                  <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
-                    {camp.platform}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">{camp.description}</p>
-                <div className="flex justify-between items-center text-sm font-medium">
-                  <span className="text-emerald-600 flex items-center gap-1">
-                    <DollarSign className="w-4 h-4" />₹{camp.payPerView} per view
-                  </span>
-                  <button
-                    onClick={() => setSelectedCampaign(camp)}
-                    className="text-primary hover:text-blue-600 flex items-center gap-1"
-                  >
-                    Apply <PlusCircle className="w-4 h-4" />
-                  </button>
-                </div>
+          <div className="divide-y divide-gray-50 flex-1 overflow-y-auto max-h-[500px]">
+            {applications.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-gray-500 mb-4">You haven't applied to any campaigns yet.</p>
+                <Link to="/campaigns" className="inline-block px-5 py-2.5 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 transition-colors">
+                  Browse Campaigns
+                </Link>
               </div>
-            ))}
+            ) : (
+              applications.map(app => (
+                <div key={app._id} className="p-5 hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <Link to={`/campaign/${app.campaign?._id}`} className="font-semibold text-gray-900 hover:text-violet-600 transition-colors">
+                      {app.campaign?.title}
+                    </Link>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
+                      app.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      app.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                      'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {app.status}
+                    </span>
+                  </div>
+                  {app.status === 'approved' && (
+                    <div className="mt-4">
+                      {/* Has user submitted content for this app? */}
+                      {submissions.some(sub => sub.application === app._id) ? (
+                        <p className="text-xs font-medium text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4" /> Content Submitted
+                        </p>
+                      ) : (
+                        <Link to={`/campaign/${app.campaign?._id}`} className="inline-block text-xs px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium">
+                          Submit Content Now
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                  {app.status === 'pending' && (
+                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" /> Awaiting brand approval
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
 
         {/* My Submissions */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-xl font-bold text-gray-900">My Submissions</h2>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+          <div className="p-5 border-b border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900">Recent Submissions</h2>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-50 flex-1 overflow-y-auto max-h-[500px]">
             {submissions.length === 0 ? (
-              <p className="p-6 text-gray-500">You haven't submitted any content yet.</p>
-            ) : submissions.map(sub => (
-              <div key={sub._id} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{sub.campaignId?.title || 'Campaign'}</h3>
-                  <a href={sub.videoLink} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1 mt-1">
-                    View Uploaded Content
-                  </a>
-                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                    <span className="flex items-center gap-1"><Eye className="w-4 h-4" /> {sub.views}</span>
-                    <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" /> ₹{sub.earnings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  {sub.status === 'approved' && <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full text-xs font-medium"><CheckCircle2 className="w-4 h-4" /> Approved</span>}
-                  {sub.status === 'pending' && <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-xs font-medium"><Clock className="w-4 h-4" /> Pending</span>}
-                  {sub.status === 'rejected' && <span className="flex items-center gap-1 text-red-600 bg-red-50 px-3 py-1 rounded-full text-xs font-medium"><XCircle className="w-4 h-4" /> Rejected</span>}
-                </div>
+              <div className="p-8 text-center text-gray-500">
+                You haven't submitted any content yet.
               </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      {/* Premium Submission & Requirements Modal */}
-      {selectedCampaign && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in-overlay" style={{ zIndex: 9999 }}>
-          <div className="bg-white rounded-3xl p-0 max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-
-            {/* Header */}
-            <div className="bg-gray-50 border-b border-gray-100 p-6 md:p-8 flex justify-between items-start">
-              <div>
-                <span className="bg-blue-100 text-blue-700 font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wider mb-3 inline-block shadow-sm">
-                  {selectedCampaign.platform}
-                </span>
-                <h3 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight">{selectedCampaign.title}</h3>
-                <p className="text-gray-500 font-medium mt-1">Payout strictly limited to minimum specified targets.</p>
-              </div>
-              <button onClick={() => setSelectedCampaign(null)} className="bg-white p-2 text-gray-400 hover:text-gray-900 rounded-full shadow-sm border border-gray-200">
-                <XCircle className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Scrollable Content Body */}
-            <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar">
-
-              {selectedCampaign.requirements?.collabTarget && (
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-8 flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shrink-0 shadow-md transform rotate-12">
-                    <Users className="w-6 h-6 text-white" />
+            ) : (
+              submissions.map(sub => (
+                <div key={sub._id} className="p-5 hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{sub.campaign?.title}</h3>
+                      <a href={sub.videoLink} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 mt-1 font-medium">
+                        View Content <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
+                      sub.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      sub.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                      sub.status === 'under_review' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                      'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {sub.status === 'under_review' ? 'In Review' : sub.status}
+                    </span>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-blue-900">Mandatory Collab Target</h4>
-                    <p className="text-blue-700 text-sm mt-0.5">
-                      You MUST invite <span className="font-bold text-blue-900 bg-white px-2 py-0.5 rounded-md shadow-sm ml-1 select-all">{selectedCampaign.requirements.collabTarget}</span> as a collaborator on Instagram.
-                    </p>
-                  </div>
-                </div>
-              )}
 
-              {selectedCampaign.requirements?.hashtags && selectedCampaign.requirements.hashtags.length > 0 && (
-                <div className="mb-8">
-                  <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs mb-3">Required Hashtags</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedCampaign.requirements.hashtags.map((tag, i) => (
-                      <span key={i} className="bg-gray-100 text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg text-sm font-semibold select-all">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {selectedCampaign.requirements?.scripts && selectedCampaign.requirements.scripts.length > 0 && (
-                <div className="mb-8">
-                  <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs mb-3">Approved Hook Scripts (Use One)</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {selectedCampaign.requirements.scripts.map((script, i) => (
-                      <div key={i} className="bg-slate-50 border border-slate-100 p-4 rounded-xl text-sm text-gray-700 italic select-all leading-relaxed">
-                        "{script}"
+                  {sub.status === 'approved' && (
+                    <div className="flex gap-4 mt-3 pt-3 border-t border-gray-100 text-sm">
+                      <div className="flex flex-col">
+                        <span className="text-gray-500 text-xs">Earnings</span>
+                        <span className="font-bold text-emerald-600">₹{sub.earnings || 0}</span>
                       </div>
-                    ))}
+                      <div className="flex flex-col">
+                        <span className="text-gray-500 text-xs">Views Recorded</span>
+                        <span className="font-bold text-gray-900">{(sub.views || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-gray-500 text-xs">Payout Status</span>
+                        <span className={`font-medium ${sub.payoutStatus === 'paid' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {sub.payoutStatus === 'paid' ? 'Paid to Wallet' : 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {sub.status === 'rejected' && sub.rejectionReason && (
+                    <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm text-red-700">
+                      <span className="font-bold">Reason:</span> {sub.rejectionReason}
+                    </div>
+                  )}
+
+                  <div className="mt-3 text-xs text-gray-400 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" /> Submitted on {new Date(sub.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </div>
                 </div>
-              )}
-
-              {selectedCampaign.requirements?.terms && selectedCampaign.requirements.terms.length > 0 && (
-                <div className="mb-8 bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                  <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs mb-4">Terms & Conditions</h4>
-                  <ul className="space-y-3">
-                    {selectedCampaign.requirements.terms.map((term, i) => (
-                      <li key={i} className="flex gap-3 items-start text-sm text-gray-600 font-medium">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                        <span>{term}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <hr className="border-gray-100 mb-8" />
-
-              <form onSubmit={handleApply}>
-                <div className="bg-white border-2 border-gray-100 rounded-2xl p-6 shadow-sm focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 transition-all">
-                  <label className="block text-sm font-bold text-gray-900 mb-2">Submit Your Delivery</label>
-                  <p className="text-xs text-gray-500 font-medium mb-4">Paste the final live URL of your Reel or Short. Our API will automatically bind and track the views.</p>
-                  <input
-                    type="url"
-                    required
-                    placeholder="https://instagram.com/reel/..."
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:outline-none text-gray-900 placeholder-gray-400"
-                    value={videoLink}
-                    onChange={(e) => setVideoLink(e.target.value)}
-                  />
-                </div>
-
-                <div className="flex gap-4 mt-6">
-                  <button type="button" onClick={() => setSelectedCampaign(null)} className="flex-1 px-4 py-4 border-2 border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 transition-colors" disabled={isSubmitting}>
-                    Cancel / Back
-                  </button>
-                  <button type="submit" className="flex-1 px-4 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-gray-900 shadow-[0_4px_14px_0_rgb(0,0,0,0.15)] transition-all disabled:opacity-50" disabled={isSubmitting}>
-                    {isSubmitting ? 'Verifying Link...' : 'Submit URL'}
-                  </button>
-                </div>
-              </form>
-
-            </div>
+              ))
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,38 +1,38 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { User, AlignLeft, Save, ArrowLeft, Loader2 } from 'lucide-react';
-import { FaInstagram, FaYoutube } from 'react-icons/fa';
+import api from '../lib/api';
+import { User, AlignLeft, Save, ArrowLeft, Loader2, AtSign } from 'lucide-react';
+import { FaInstagram, FaYoutube, FaTwitter } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 
 export default function EditProfile() {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || {});
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     bio: '',
     instagramHandle: '',
     youtubeChannel: '',
+    twitterHandle: '',
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfile = async () => {
-      setLoading(true);
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/profile`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const profile = res.data;
+        const res = await api.get('/users/profile');
+        const p = res.data;
         setFormData({
-          name: profile.name || '',
-          bio: profile.bio || '',
-          instagramHandle: profile.instagramHandle || '',
-          youtubeChannel: profile.youtubeChannel || '',
+          name: p.name || '',
+          username: p.username || '',
+          bio: p.bio || '',
+          instagramHandle: p.instagramHandle || '',
+          youtubeChannel: p.youtubeChannel || '',
+          twitterHandle: p.twitterHandle || '',
         });
       } catch (error) {
-        console.error('Error fetching profile', error);
+        toast.error('Error fetching profile');
       } finally {
         setLoading(false);
       }
@@ -48,24 +48,20 @@ export default function EditProfile() {
     e.preventDefault();
     setSaving(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}/users/profile`, formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      // Update local storage user data
-      const updatedUser = { ...user, name: res.data.name };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      const res = await api.put('/users/profile', formData);
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      localStorage.setItem('user', JSON.stringify({ ...user, name: res.data.name, username: res.data.username }));
+      toast.success('Profile updated successfully!');
       navigate('/profile');
     } catch (error) {
-      console.error('Error saving profile', error);
+      toast.error(error.response?.data?.error || 'Error saving profile');
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
+    return <div className="flex justify-center items-center min-h-screen"><Loader2 className="w-10 h-10 animate-spin text-violet-600" /></div>;
   }
 
   return (
@@ -80,10 +76,11 @@ export default function EditProfile() {
       <div className="max-w-md mx-auto px-4 pt-6">
         <form onSubmit={handleSave} className="space-y-6">
           
+          {/* Basic Info */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-5">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                <User className="w-4 h-4 text-emerald-600" /> Full Name
+                <User className="w-4 h-4 text-violet-600" /> Full Name
               </label>
               <input 
                 type="text" 
@@ -91,14 +88,28 @@ export default function EditProfile() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="John Doe"
-                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all"
                 required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <AtSign className="w-4 h-4 text-violet-600" /> Username
+              </label>
+              <input 
+                type="text" 
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                placeholder="johndoe"
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all lowercase"
               />
             </div>
             
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                <AlignLeft className="w-4 h-4 text-emerald-600" /> Bio
+                <AlignLeft className="w-4 h-4 text-violet-600" /> Bio
               </label>
               <textarea 
                 name="bio"
@@ -106,38 +117,54 @@ export default function EditProfile() {
                 onChange={handleChange}
                 placeholder="I am a lifestyle creator..."
                 rows="3"
-                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all resize-none"
               ></textarea>
             </div>
           </div>
 
+          {/* Social Links */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-5">
             <h2 className="font-bold text-gray-900 mb-2 text-sm uppercase tracking-wide">Social Links</h2>
+            
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                <FaInstagram className="w-4 h-4 text-pink-600" /> Instagram Handle
+                <FaInstagram className="w-4 h-4 text-pink-600" /> Instagram Username
               </label>
               <input 
                 type="text" 
                 name="instagramHandle"
                 value={formData.instagramHandle}
                 onChange={handleChange}
-                placeholder="@yourhandle"
+                placeholder="yourhandle"
                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition-all"
               />
             </div>
             
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                <FaYoutube className="w-4 h-4 text-red-600" /> YouTube Channel URL
+                <FaYoutube className="w-4 h-4 text-red-600" /> YouTube Channel Link
               </label>
               <input 
                 type="url" 
                 name="youtubeChannel"
                 value={formData.youtubeChannel}
                 onChange={handleChange}
-                placeholder="https://youtube.com/c/..."
+                placeholder="https://youtube.com/..."
                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <FaTwitter className="w-4 h-4 text-blue-400" /> Twitter Handle
+              </label>
+              <input 
+                type="text" 
+                name="twitterHandle"
+                value={formData.twitterHandle}
+                onChange={handleChange}
+                placeholder="yourhandle"
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
               />
             </div>
           </div>
