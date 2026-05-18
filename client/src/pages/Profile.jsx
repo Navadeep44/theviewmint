@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import { User, Edit, FileText, CreditCard, Bell, HelpCircle, LogOut, Activity, Instagram, Youtube, Twitter } from 'lucide-react';
+import { User, Edit, FileText, CreditCard, Bell, HelpCircle, LogOut, Activity } from 'lucide-react';
+import { FaInstagram, FaYoutube, FaTwitter } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
